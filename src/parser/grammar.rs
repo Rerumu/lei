@@ -11,60 +11,7 @@ use crate::ast::{
 use bumpalo::{collections::Vec, vec, Bump};
 use lasso::{Rodeo, Spur};
 use logos::{Logos, Span};
-
-fn as_unop_enum(op: &Token) -> Option<UnOp> {
-	let op = match op {
-		Token::Hash => UnOp::Hash,
-		Token::Minus => UnOp::Minus,
-		Token::Not => UnOp::Not,
-		_ => {
-			return None;
-		}
-	};
-
-	Some(op)
-}
-
-fn as_binop_enum(op: &Token) -> Option<BinOp> {
-	let op = match op {
-		Token::And => BinOp::And,
-		Token::Caret => BinOp::Caret,
-		Token::GreaterThan => BinOp::GreaterThan,
-		Token::GreaterThanEqual => BinOp::GreaterThanEqual,
-		Token::LessThan => BinOp::LessThan,
-		Token::LessThanEqual => BinOp::LessThanEqual,
-		Token::Minus => BinOp::Minus,
-		Token::Or => BinOp::Or,
-		Token::Percent => BinOp::Percent,
-		Token::Plus => BinOp::Plus,
-		Token::Slash => BinOp::Slash,
-		Token::Star => BinOp::Star,
-		Token::TildeEqual => BinOp::TildeEqual,
-		Token::TwoDots => BinOp::TwoDots,
-		Token::TwoEquals => BinOp::TwoEquals,
-		_ => {
-			return None;
-		}
-	};
-
-	Some(op)
-}
-
-fn as_compop_enum(op: &Token) -> Option<CompOp> {
-	let op = match op {
-		Token::CaretEqual => CompOp::CaretEqual,
-		Token::MinusEqual => CompOp::MinusEqual,
-		Token::PercentEqual => CompOp::PercentEqual,
-		Token::PlusEqual => CompOp::PlusEqual,
-		Token::SlashEqual => CompOp::SlashEqual,
-		Token::StarEqual => CompOp::StarEqual,
-		_ => {
-			return None;
-		}
-	};
-
-	Some(op)
-}
+use std::convert::TryInto;
 
 fn as_name_of_expr(exp: &Expression) -> Option<Spur> {
 	// now that's a retro game reference
@@ -637,12 +584,12 @@ impl<'a, 'b> State<'a, 'b> {
 	}
 
 	fn parse_sub_expr(&mut self, min_prec: u8) -> Res<Expression<'b>> {
-		let mut lhs = match as_unop_enum(&self.lex.token) {
-			Some(node) => self.parse_unop_expr(node),
-			None => self.parse_simple_expr(),
+		let mut lhs = match self.lex.token.clone().try_into() {
+			Ok(node) => self.parse_unop_expr(node),
+			Err(_) => self.parse_simple_expr(),
 		}?;
 
-		while let Some(node) = as_binop_enum(&self.lex.token) {
+		while let Ok(node) = self.lex.token.clone().try_into() {
 			let (lhs_prec, rhs_prec) = as_binary_priority(node);
 			let bin_op = self.lex.node_line(node);
 
@@ -934,8 +881,8 @@ impl<'a, 'b> State<'a, 'b> {
 	fn aux_assignment(&mut self, var_list: Vec<'b, Var<'b>>) -> Res<Stmt<'b>> {
 		let op = &self.lex.token;
 
-		match (op, as_compop_enum(op)) {
-			(_, Some(op)) if var_list.len() == 1 => {
+		match (op, op.clone().try_into()) {
+			(_, Ok(op)) if var_list.len() == 1 => {
 				self.lex.next();
 
 				let var = var_list.into_iter().next().unwrap();
@@ -943,7 +890,7 @@ impl<'a, 'b> State<'a, 'b> {
 
 				Ok(Stmt::CompAssignment(CompAssignment { var, expr, op }))
 			}
-			(Token::Equal, None) => {
+			(Token::Equal, Err(_)) => {
 				self.lex.next();
 
 				let expr_list = self.parse_expr_list(false)?;

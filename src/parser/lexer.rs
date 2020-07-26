@@ -1,6 +1,7 @@
 use super::error::{Error, Res};
-use crate::ast::node::NodeLine;
+use crate::ast::node::{BinOp, CompOp, NodeLine, UnOp};
 use logos::{Lexer, Logos, Span};
+use std::convert::TryFrom;
 
 pub struct Line(usize);
 
@@ -279,6 +280,72 @@ pub enum Token {
 
 	#[token("while")]
 	While,
+}
+
+impl TryFrom<Token> for UnOp {
+	type Error = ();
+
+	fn try_from(op: Token) -> Result<Self, Self::Error> {
+		let op = match op {
+			Token::Hash => UnOp::Hash,
+			Token::Minus => UnOp::Minus,
+			Token::Not => UnOp::Not,
+			_ => {
+				return Err(());
+			}
+		};
+
+		Ok(op)
+	}
+}
+
+impl TryFrom<Token> for BinOp {
+	type Error = ();
+
+	fn try_from(op: Token) -> Result<Self, Self::Error> {
+		let op = match op {
+			Token::And => BinOp::And,
+			Token::Caret => BinOp::Caret,
+			Token::GreaterThan => BinOp::GreaterThan,
+			Token::GreaterThanEqual => BinOp::GreaterThanEqual,
+			Token::LessThan => BinOp::LessThan,
+			Token::LessThanEqual => BinOp::LessThanEqual,
+			Token::Minus => BinOp::Minus,
+			Token::Or => BinOp::Or,
+			Token::Percent => BinOp::Percent,
+			Token::Plus => BinOp::Plus,
+			Token::Slash => BinOp::Slash,
+			Token::Star => BinOp::Star,
+			Token::TildeEqual => BinOp::TildeEqual,
+			Token::TwoDots => BinOp::TwoDots,
+			Token::TwoEquals => BinOp::TwoEquals,
+			_ => {
+				return Err(());
+			}
+		};
+
+		Ok(op)
+	}
+}
+
+impl TryFrom<Token> for CompOp {
+	type Error = ();
+
+	fn try_from(op: Token) -> Result<Self, Self::Error> {
+		let op = match op {
+			Token::CaretEqual => CompOp::CaretEqual,
+			Token::MinusEqual => CompOp::MinusEqual,
+			Token::PercentEqual => CompOp::PercentEqual,
+			Token::PlusEqual => CompOp::PlusEqual,
+			Token::SlashEqual => CompOp::SlashEqual,
+			Token::StarEqual => CompOp::StarEqual,
+			_ => {
+				return Err(());
+			}
+		};
+
+		Ok(op)
+	}
 }
 
 impl<'a> std::fmt::Display for Token {
